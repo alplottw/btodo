@@ -3,13 +3,6 @@ require($_SERVER['DOCUMENT_ROOT'].'/bitrix/header.php');
 $APPLICATION->SetTitle("Главная");
 ?>
 
-<div class="mb-4">
-    <form class="d-flex" method="GET" action="">
-        <input type="text" name="search" class="form-control me-2" placeholder="Поиск по названию..." value="<?=htmlspecialchars($_GET['search'] ?? '')?>">
-        <button type="submit" class="btn btn-primary">Поиск</button>
-    </form>
-</div>
-
 <?php
 
 global $arFilter;
