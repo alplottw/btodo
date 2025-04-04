@@ -1,0 +1,9 @@
+# Bitrix core
+bitrix/
+
+# Upload directory
+upload/
+
+# Cache and temp
+*.log
+*.txt

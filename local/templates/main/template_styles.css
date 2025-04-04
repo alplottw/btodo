@@ -1,0 +1,49 @@
+/* Base styles */
+body {
+    margin: 0;
+    padding: 0;
+}
+
+/* Header */
+.main-header {
+    background-color: #f8f9fa;
+    padding: 20px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.main-header h1 {
+    margin: 0;
+    color: #333;
+}
+
+/* Content */
+.content {
+    padding: 40px 0;
+    min-height: 400px;
+}
+
+/* Footer */
+.main-footer {
+    background-color: #f8f9fa;
+    padding: 20px 0;
+    border-top: 1px solid #e9ecef;
+    margin-top: auto;
+}
+
+/* Custom styles */
+main {
+    flex: 1 0 auto;
+}
+
+/* Override Bootstrap styles if needed */
+.nav-link {
+    color: rgba(0, 0, 0, .65);
+}
+
+.nav-link:hover {
+    color: rgba(0, 0, 0, .85);
+}
+
+.nav-pills .nav-link.active {
+    background-color: #0d6efd;
+} 
