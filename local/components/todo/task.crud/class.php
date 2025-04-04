@@ -3,25 +3,9 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 
 use Bitrix\Main\Loader;
 use Bitrix\Main\Application;
-use Bitrix\Main\Engine\Contract\Controllerable;
-use Bitrix\Main\Engine\ActionFilter;
 
-class TodoTaskCrudComponent extends CBitrixComponent implements Controllerable
+class TodoTaskCrudComponent extends CBitrixComponent
 {
-    public function configureActions()
-    {
-        return [
-            'delete' => [
-                'prefilters' => [
-                    new ActionFilter\Authentication(),
-                    new ActionFilter\HttpMethod(
-                        array(ActionFilter\HttpMethod::METHOD_POST)
-                    ),
-                    new ActionFilter\Csrf(),
-                ]
-            ],
-        ];
-    }
 
     public function deleteAction($id)
     {
