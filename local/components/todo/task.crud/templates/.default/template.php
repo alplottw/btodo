@@ -1,57 +1,63 @@
 <?php
-if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
-
-use Bitrix\Main\Page\Asset;
-
-Asset::getInstance()->addCss('https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css');
-Asset::getInstance()->addJs('https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js');
+if (!defined("B_PROLOG_INCLUDED") || B_PROLOG_INCLUDED!==true) die();
+/** @var array $arParams */
+/** @var array $arResult */
+/** @global CMain $APPLICATION */
+/** @global CUser $USER */
+/** @global CDatabase $DB */
+/** @var CBitrixComponentTemplate $this */
 ?>
 
-<div class="task-add-form">
-    <?php if (!empty($arResult['ERRORS'])): ?>
-        <div class="alert alert-danger">
-            <?php foreach ($arResult['ERRORS'] as $error): ?>
-                <p><?= htmlspecialchars($error) ?></p>
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title mb-4"><?=$arResult['TASK'] ? 'Редактирование задачи' : 'Создание задачи'?></h5>
 
-    <form method="post" action="">
-        <?= bitrix_sessid_post() ?>
-        
-        <div class="mb-3">
-            <label for="taskName" class="form-label">Название задачи</label>
-            <input type="text" class="form-control" id="taskName" name="NAME" required>
-        </div>
-        
-        <div class="mb-3">
-            <label for="taskDescription" class="form-label">Описание</label>
-            <textarea class="form-control" id="taskDescription" name="DESCRIPTION" rows="3"></textarea>
-        </div>
-        
-        <div class="mb-3">
-            <label for="taskTags" class="form-label">Теги</label>
-            <select class="form-control select2" id="taskTags" name="TAGS[]" multiple>
-                <?php foreach ($arResult['TAGS'] as $id => $name): ?>
-                    <option value="<?= $id ?>"><?= htmlspecialchars($name) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        
-        <div class="mb-3">
-            <label for="newTags" class="form-label">Новые теги (через запятую)</label>
-            <input type="text" class="form-control" id="newTags" name="NEW_TAGS" placeholder="тег1, тег2, тег3">
-        </div>
-        
-        <button type="submit" class="btn btn-primary">Создать задачу</button>
-    </form>
-</div>
+        <?php if (!empty($arResult['ERRORS'])): ?>
+            <div class="alert alert-danger">
+                <?=implode('<br>', $arResult['ERRORS'])?>
+            </div>
+        <?php endif; ?>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    $('.select2').select2({
-        placeholder: 'Выберите теги',
-        allowClear: true
-    });
-});
-</script> 
+        <form method="POST" action="">
+            <?=bitrix_sessid_post()?>
+            <?php if ($arResult['TASK']): ?>
+                <input type="hidden" name="TASK_ID" value="<?=$arResult['TASK']['ID']?>">
+            <?php endif; ?>
+
+            <div class="mb-3">
+                <label for="taskName" class="form-label">Название задачи</label>
+                <input type="text" 
+                       class="form-control" 
+                       id="taskName" 
+                       name="NAME" 
+                       required
+                       value="<?=htmlspecialchars($arResult['TASK']['NAME'] ?? '')?>">
+            </div>
+
+            <div class="mb-3">
+                <label for="taskDescription" class="form-label">Описание</label>
+                <textarea class="form-control" 
+                          id="taskDescription" 
+                          name="DESCRIPTION" 
+                          rows="3"><?=htmlspecialchars($arResult['TASK']['DESCRIPTION'] ?? '')?></textarea>
+            </div>
+
+            <div class="mb-3">
+                <label for="taskTags" class="form-label">Теги (через запятую)</label>
+                <input type="text" 
+                       class="form-control" 
+                       id="taskTags" 
+                       name="TAGS" 
+                       placeholder="Например: важное, срочно, проект"
+                       value="<?=htmlspecialchars($arResult['TASK']['TAGS'] ?? '')?>">
+            </div>
+
+            <div class="d-flex justify-content-between">
+                <button type="submit" class="btn btn-primary">
+                    <?=$arResult['TASK'] ? 'Сохранить' : 'Создать'?>
+                </button>
+                <a href="/" class="btn btn-secondary">Отмена</a>
+            </div>
+        </form>
+    </div>
+</div> 

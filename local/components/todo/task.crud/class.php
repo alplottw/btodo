@@ -75,7 +75,11 @@ class TodoTaskCrudComponent extends CBitrixComponent implements Controllerable
             return;
         }
 
-        $this->arResult['TAGS'] = $this->getTags();
+        // Загружаем данные задачи для редактирования
+        $taskId = $request->get('id');
+        if ($taskId) {
+            $this->loadTask($taskId);
+        }
         
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && check_bitrix_sessid()) {
             $this->processForm();
@@ -84,22 +88,46 @@ class TodoTaskCrudComponent extends CBitrixComponent implements Controllerable
         $this->includeComponentTemplate();
     }
 
-    protected function getTags()
+    protected function loadTask($id)
     {
-        $tags = [];
-        $res = CIBlockElement::GetList(
-            ['SORT' => 'ASC'],
-            ['IBLOCK_ID' => IBLOCK_ID['TODO_TAGS'], 'ACTIVE' => 'Y'],
+        $item = CIBlockElement::GetList(
+            [],
+            [
+                'IBLOCK_ID' => IBLOCK_ID['TODO'],
+                'ID' => $id,
+                'SECTION_CODE' => bitrix_sessid()
+            ],
             false,
             false,
-            ['ID', 'NAME']
-        );
+            ['ID', 'NAME', 'PREVIEW_TEXT', 'PROPERTY_TAGS']
+        )->GetNext();
 
-        while ($tag = $res->Fetch()) {
-            $tags[$tag['ID']] = $tag['NAME'];
+        if ($item) {
+            // Получаем теги
+            $tagNames = [];
+            if (!empty($item['PROPERTY_TAGS_VALUE'])) {
+                $res = CIBlockElement::GetList(
+                    [],
+                    [
+                        'IBLOCK_ID' => IBLOCK_ID['TODO_TAGS'],
+                        'ID' => $item['PROPERTY_TAGS_VALUE']
+                    ],
+                    false,
+                    false,
+                    ['ID', 'NAME']
+                );
+                while ($tag = $res->Fetch()) {
+                    $tagNames[] = $tag['NAME'];
+                }
+            }
+
+            $this->arResult['TASK'] = [
+                'ID' => $item['ID'],
+                'NAME' => $item['NAME'],
+                'DESCRIPTION' => $item['PREVIEW_TEXT'],
+                'TAGS' => implode(', ', $tagNames)
+            ];
         }
-
-        return $tags;
     }
 
     protected function processForm()
@@ -107,36 +135,24 @@ class TodoTaskCrudComponent extends CBitrixComponent implements Controllerable
         global $APPLICATION;
         
         $request = Application::getInstance()->getContext()->getRequest();
+        $taskId = $request->getPost('TASK_ID');
         
         $el = new CIBlockElement;
         
         // Получаем ID раздела на основе сессии
         $sectionId = $this->getOrCreateSection();
         
-        // Подготавливаем теги
+        // Обрабатываем теги
         $tagIds = [];
-        $existingTags = $request->getPost('TAGS');
-        $newTags = array_filter(explode(',', $request->getPost('NEW_TAGS')));
+        $tags = array_filter(array_map('trim', explode(',', $request->getPost('TAGS'))));
         
-        // Добавляем новые теги
-        foreach ($newTags as $tagName) {
-            $tagName = trim($tagName);
+        foreach ($tags as $tagName) {
             if (empty($tagName)) continue;
-            
             $tagId = $this->createTag($tagName);
             if ($tagId) {
                 $tagIds[] = $tagId;
             }
         }
-        
-        // Объединяем с существующими тегами
-        if (is_array($existingTags)) {
-            $tagIds = array_merge($tagIds, $existingTags);
-        }
-        
-        $props = [
-            'TAGS' => array_unique($tagIds)
-        ];
         
         $fields = [
             'IBLOCK_ID' => IBLOCK_ID['TODO'],
@@ -144,13 +160,36 @@ class TodoTaskCrudComponent extends CBitrixComponent implements Controllerable
             'NAME' => $request->getPost('NAME'),
             'ACTIVE' => 'Y',
             'PREVIEW_TEXT' => $request->getPost('DESCRIPTION'),
-            'PROPERTY_VALUES' => $props
+            'PROPERTY_VALUES' => [
+                'TAGS' => array_unique($tagIds)
+            ]
         ];
         
-        if ($el->Add($fields)) {
-            LocalRedirect($APPLICATION->GetCurPage());
+        if ($taskId) {
+            // Проверяем права на редактирование
+            $item = CIBlockElement::GetList(
+                [],
+                [
+                    'IBLOCK_ID' => IBLOCK_ID['TODO'],
+                    'ID' => $taskId,
+                    'SECTION_CODE' => bitrix_sessid()
+                ],
+                false,
+                false,
+                ['ID']
+            )->Fetch();
+
+            if ($item && $el->Update($taskId, $fields)) {
+                LocalRedirect('/');
+            } else {
+                $this->arResult['ERRORS'][] = $el->LAST_ERROR;
+            }
         } else {
-            $this->arResult['ERRORS'][] = $el->LAST_ERROR;
+            if ($el->Add($fields)) {
+                LocalRedirect('/');
+            } else {
+                $this->arResult['ERRORS'][] = $el->LAST_ERROR;
+            }
         }
     }
     
@@ -158,7 +197,6 @@ class TodoTaskCrudComponent extends CBitrixComponent implements Controllerable
     {
         $sessionId = bitrix_sessid();
         
-        // Ищем раздел по коду (sessid)
         $section = CIBlockSection::GetList(
             [],
             [
@@ -173,7 +211,6 @@ class TodoTaskCrudComponent extends CBitrixComponent implements Controllerable
             return $section['ID'];
         }
         
-        // Создаем новый раздел
         $bs = new CIBlockSection;
         $fields = [
             'IBLOCK_ID' => IBLOCK_ID['TODO'],
@@ -182,13 +219,11 @@ class TodoTaskCrudComponent extends CBitrixComponent implements Controllerable
             'ACTIVE' => 'Y'
         ];
         
-        $sectionId = $bs->Add($fields);
-        return $sectionId;
+        return $bs->Add($fields);
     }
     
     protected function createTag($name)
     {
-        // Проверяем существование тега
         $res = CIBlockElement::GetList(
             [],
             [
@@ -205,7 +240,6 @@ class TodoTaskCrudComponent extends CBitrixComponent implements Controllerable
             return $existingTag['ID'];
         }
 
-        // Создаем новый тег если не существует
         $el = new CIBlockElement;
         $fields = [
             'IBLOCK_ID' => IBLOCK_ID['TODO_TAGS'],
@@ -224,7 +258,6 @@ class TodoTaskCrudComponent extends CBitrixComponent implements Controllerable
 
         $el = new CIBlockElement;
         
-        // Проверяем, что элемент принадлежит текущей сессии
         $item = CIBlockElement::GetList(
             [],
             [
