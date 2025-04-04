@@ -3,9 +3,58 @@ if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 
 use Bitrix\Main\Loader;
 use Bitrix\Main\Application;
+use Bitrix\Main\Engine\Contract\Controllerable;
+use Bitrix\Main\Engine\ActionFilter;
 
-class TodoTaskAddComponent extends CBitrixComponent
+class TodoTaskCrudComponent extends CBitrixComponent implements Controllerable
 {
+    public function configureActions()
+    {
+        return [
+            'delete' => [
+                'prefilters' => [
+                    new ActionFilter\Authentication(),
+                    new ActionFilter\HttpMethod(
+                        array(ActionFilter\HttpMethod::METHOD_POST)
+                    ),
+                    new ActionFilter\Csrf(),
+                ]
+            ],
+        ];
+    }
+
+    public function deleteAction($id)
+    {
+        if (!$id) {
+            return ['success' => false, 'error' => 'ID не указан'];
+        }
+
+        $el = new CIBlockElement;
+        
+        // Проверяем, что элемент принадлежит текущей сессии
+        $item = CIBlockElement::GetList(
+            [],
+            [
+                'IBLOCK_ID' => IBLOCK_ID['TODO'],
+                'ID' => $id,
+                'SECTION_CODE' => bitrix_sessid()
+            ],
+            false,
+            false,
+            ['ID']
+        )->Fetch();
+
+        if (!$item) {
+            return ['success' => false, 'error' => 'Задача не найдена или нет прав на удаление'];
+        }
+
+        if ($el->Delete($id)) {
+            return ['success' => true];
+        } else {
+            return ['success' => false, 'error' => 'Ошибка удаления'];
+        }
+    }
+
     public function onPrepareComponentParams($arParams)
     {
         return $arParams;
@@ -15,6 +64,14 @@ class TodoTaskAddComponent extends CBitrixComponent
     {
         if (!Loader::includeModule('iblock')) {
             ShowError('Модуль iblock не установлен');
+            return;
+        }
+
+        $request = Application::getInstance()->getContext()->getRequest();
+        
+        if ($request->get('action') === 'delete' && $request->get('id') && check_bitrix_sessid()) {
+            $this->deleteTask($request->get('id'));
+            LocalRedirect('/');
             return;
         }
 
@@ -157,5 +214,33 @@ class TodoTaskAddComponent extends CBitrixComponent
         ];
         
         return $el->Add($fields);
+    }
+
+    protected function deleteTask($id)
+    {
+        if (!$id) {
+            return;
+        }
+
+        $el = new CIBlockElement;
+        
+        // Проверяем, что элемент принадлежит текущей сессии
+        $item = CIBlockElement::GetList(
+            [],
+            [
+                'IBLOCK_ID' => IBLOCK_ID['TODO'],
+                'ID' => $id,
+                'SECTION_CODE' => bitrix_sessid()
+            ],
+            false,
+            false,
+            ['ID']
+        )->Fetch();
+
+        if (!$item) {
+            return;
+        }
+
+        $el->Delete($id);
     }
 } 

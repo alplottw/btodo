@@ -6,7 +6,7 @@ $APPLICATION->SetTitle("Создание задачи");
 <div class="row">
     <div class="col-md-8 offset-md-2">
         <?$APPLICATION->IncludeComponent(
-            'todo:task.add',
+            'todo:task.crud',
             '',
             []
         );?>
